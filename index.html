@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Калькулятор БЖУ</title>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { margin-top: 20px; font-weight: bold; }
+        #user-greeting { color: #2A5885; margin-bottom: 20px; }  <!-- Стиль для приветствия -->
+    </style>
+</head>
+<body>
+    <h1>Калькулятор БЖУ</h1>
+    <div id="user-greeting">Привет, Гость!</div>
+    <form id="bju-form">
+        <label>Калории (ккал):</label>
+        <input type="number" id="calories" required><br><br>
+        
+        <label>Белки (%):</label>
+        <input type="number" id="protein" required><br><br>
+        
+        <label>Жиры (%):</label>
+        <input type="number" id="fat" required><br><br>
+        
+        <label>Углеводы (%):</label>
+        <input type="number" id="carbs" required><br><br>
+        
+        <button type="submit">Рассчитать</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+
+    <script>
+        // Инициализация VK API
+        vkBridge.send('VKWebAppInit');
+
+        // Загрузка данных пользователя
+        async function loadUserData() {
+            try {
+                const user = await vkBridge.send('VKWebAppGetUserInfo');
+                document.getElementById('user-greeting').textContent = `Привет, ${user.first_name}!`;
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('user-greeting').textContent = "Привет, Гость!";
+            }
+        }
+
+        // Запуск при загрузке страницы
+        window.addEventListener('DOMContentLoaded', loadUserData);
+    </script>
+
+    <script>
+        // Ваш текущий код с расчётом БЖУ
+        document.getElementById('bju-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const calories = parseFloat(document.getElementById('calories').value);
+            const proteinPercent = parseFloat(document.getElementById('protein').value);
+            const fatPercent = parseFloat(document.getElementById('fat').value);
+            const carbsPercent = parseFloat(document.getElementById('carbs').value);
+            
+            const totalPercent = proteinPercent + fatPercent + carbsPercent;
+            if (totalPercent !== 100) {
+                alert("Сумма БЖУ должна быть 100%!");
+                return;
+            }
+            
+            const proteinGrams = (calories * proteinPercent / 100) / 4;
+            const fatGrams = (calories * fatPercent / 100) / 9;
+            const carbsGrams = (calories * carbsPercent / 100) / 4;
+            
+            const result = `
+                <p>Белки: ${proteinGrams.toFixed(1)} г</p>
+                <p>Жиры: ${fatGrams.toFixed(1)} г</p>
+                <p>Углеводы: ${carbsGrams.toFixed(1)} г</p>
+            `;
+            
+            document.getElementById('result').innerHTML = result;
+        });
+    </script>
+</body>
+</html>
