@@ -5,9 +5,45 @@
     <title>Калькулятор БЖУ</title>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .result { margin-top: 20px; font-weight: bold; }
-        #user-greeting { color: #2A5885; margin-bottom: 20px; }  <!-- Стиль для приветствия -->
+        /* Добавляем поддержку темной темы VK */
+        body {
+            font-family: -apple-system, system-ui, Arial, sans-serif;
+            padding: 20px;
+            background-color: var(--background_page);
+            color: var(--text_primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .result { 
+            margin-top: 20px; 
+            font-weight: bold;
+            color: var(--text_primary);
+        }
+        
+        #user-greeting { 
+            color: var(--text_secondary);
+            margin-bottom: 20px;
+        }
+
+        input, button {
+            background-color: var(--field_background);
+            color: var(--text_primary);
+            border: 1px solid var(--field_border);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+
+        button {
+            background-color: var(--button_primary_background);
+            color: var(--button_primary_foreground);
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -51,7 +87,6 @@
     </script>
 
     <script>
-        // Ваш текущий код с расчётом БЖУ
         document.getElementById('bju-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -62,7 +97,7 @@
             
             const totalPercent = proteinPercent + fatPercent + carbsPercent;
             if (totalPercent !== 100) {
-                alert("Сумма БЖУ должна быть 100%!");
+                alert("Сумма БЖУ должна быть ровно 100%!"); // Исправленное сообщение
                 return;
             }
             
