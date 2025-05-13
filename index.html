@@ -5,7 +5,7 @@
     <title>Калькулятор БЖУ</title>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
-        /* Добавляем кастомные свойства на случай, если переменные VK не подхватятся */
+        /* Базовые переменные цветов */
         :root {
             --background_page: #ffffff;
             --text_primary: #000000;
@@ -14,8 +14,12 @@
             --field_border: #e1e3e6;
             --button_primary_background: #0077ff;
             --button_primary_foreground: #ffffff;
+            --modal_background: rgba(0, 0, 0, 0.4);
+            --accent: #0077ff;
+            --error: #e64646;
         }
 
+        /* Темная тема */
         @media (prefers-color-scheme: dark) {
             :root {
                 --background_page: #19191a;
@@ -24,37 +28,52 @@
                 --field_background: #2c2d2e;
                 --field_border: #454647;
                 --button_primary_background: #4986cc;
+                --modal_background: rgba(0, 0, 0, 0.6);
             }
         }
 
+        /* Базовые стили */
         body {
             font-family: -apple-system, system-ui, Arial, sans-serif;
-            padding: 20px;
             background-color: var(--background_page);
             color: var(--text_primary);
             margin: 0;
+            padding: 20px;
             min-height: 100vh;
             transition: background-color 0.3s, color 0.3s;
         }
 
-        .result { 
-            margin-top: 20px; 
-            font-weight: bold;
-        }
-        
-        #user-greeting { 
-            color: var(--text_secondary);
-            margin-bottom: 20px;
-            font-size: 1.1em;
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
         }
 
-        input, button {
+        h1 {
+            color: var(--text_primary);
+            margin-bottom: 24px;
+        }
+
+        /* Форма */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text_secondary);
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--field_border);
             background-color: var(--field_background);
             color: var(--text_primary);
-            border: 1px solid var(--field_border);
-            padding: 8px 12px;
-            border-radius: 8px;
-            width: 200px;
+            font-size: 16px;
             box-sizing: border-box;
         }
 
@@ -62,111 +81,207 @@
             background-color: var(--button_primary_background);
             color: var(--button_primary_foreground);
             border: none;
+            border-radius: 8px;
             padding: 12px 24px;
-            cursor: pointer;
+            font-size: 16px;
             font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
             transition: opacity 0.2s;
-            width: auto;
         }
 
         button:hover {
             opacity: 0.9;
         }
 
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        /* Результаты */
+        .result {
+            margin-top: 24px;
+            background-color: var(--field_background);
+            padding: 16px;
+            border-radius: 8px;
         }
 
-        label {
-            display: block;
-            margin-bottom: 4px;
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        /* Модальное окно */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal_background);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal--active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background-color: var(--background_page);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text_primary);
+        }
+
+        .modal-text {
+            margin-bottom: 24px;
+            color: var(--text_primary);
+            line-height: 1.5;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .modal-button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+        }
+
+        .modal-button--primary {
+            background-color: var(--button_primary_background);
+            color: var(--button_primary_foreground);
+        }
+
+        /* Приветствие */
+        .greeting {
             color: var(--text_secondary);
+            margin-bottom: 24px;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <h1>Калькулятор БЖУ</h1>
-    <div id="user-greeting">Привет, Гость!</div>
-    <form id="bju-form">
-        <div>
-            <label>Калории (ккал):</label>
-            <input type="number" id="calories" required>
+    <div class="container">
+        <!-- Модальное окно -->
+        <div class="modal" id="modal">
+            <div class="modal-content">
+                <div class="modal-header" id="modal-header">Уведомление</div>
+                <div class="modal-text" id="modal-text"></div>
+                <div class="modal-footer">
+                    <button class="modal-button modal-button--primary" id="modal-close">Понятно</button>
+                </div>
+            </div>
         </div>
+
+        <!-- Основной контент -->
+        <h1>Калькулятор БЖУ</h1>
+        <div class="greeting" id="greeting">Привет, Гость!</div>
         
-        <div>
-            <label>Белки (%):</label>
-            <input type="number" id="protein" required>
+        <form id="bju-form">
+            <div class="form-group">
+                <label for="calories">Калории (ккал)</label>
+                <input type="number" id="calories" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="protein">Белки (%)</label>
+                <input type="number" id="protein" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="fat">Жиры (%)</label>
+                <input type="number" id="fat" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="carbs">Углеводы (%)</label>
+                <input type="number" id="carbs" required>
+            </div>
+            
+            <button type="submit">Рассчитать</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;">
+            <div class="result-item">
+                <span>Белки:</span>
+                <span id="protein-result">0 г</span>
+            </div>
+            <div class="result-item">
+                <span>Жиры:</span>
+                <span id="fat-result">0 г</span>
+            </div>
+            <div class="result-item">
+                <span>Углеводы:</span>
+                <span id="carbs-result">0 г</span>
+            </div>
         </div>
-        
-        <div>
-            <label>Жиры (%):</label>
-            <input type="number" id="fat" required>
-        </div>
-        
-        <div>
-            <label>Углеводы (%):</label>
-            <input type="number" id="carbs" required>
-        </div>
-        
-        <button type="submit">Рассчитать</button>
-    </form>
-    
-    <div id="result" class="result"></div>
+    </div>
 
     <script>
-        // Обработка ошибок инициализации
-        async function initializeApp() {
+        // Инициализация VK
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await vkBridge.send('VKWebAppInit');
-                console.log('VK Bridge initialized');
-                loadUserData();
-            } catch (error) {
-                console.error('VK Bridge init error:', error);
-                document.getElementById('user-greeting').textContent = "Режим предпросмотра";
-            }
-        }
-
-        // Загрузка данных пользователя
-        async function loadUserData() {
-            try {
                 const user = await vkBridge.send('VKWebAppGetUserInfo');
-                document.getElementById('user-greeting').textContent = `Привет, ${user.first_name}!`;
+                document.getElementById('greeting').textContent = `Привет, ${user.first_name}!`;
             } catch (error) {
-                console.error('User info error:', error);
-                document.getElementById('user-greeting').textContent = "Привет, Гость!";
+                console.log('Режим предпросмотра');
             }
+        });
+
+        // Модальное окно
+        const modal = document.getElementById('modal');
+        const modalText = document.getElementById('modal-text');
+        const modalClose = document.getElementById('modal-close');
+
+        function showModal(title, message) {
+            document.getElementById('modal-header').textContent = title;
+            modalText.textContent = message;
+            modal.classList.add('modal--active');
         }
 
-        // Запуск приложения
-        document.addEventListener('DOMContentLoaded', initializeApp);
-    </script>
+        modalClose.addEventListener('click', () => {
+            modal.classList.remove('modal--active');
+        });
 
-    <script>
-        // Валидация и расчет
-        document.getElementById('bju-form').addEventListener('submit', function(e) {
+        // Расчет БЖУ
+        document.getElementById('bju-form').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const getValue = id => {
-                const el = document.getElementById(id);
-                return el.value.trim() === '' ? NaN : parseFloat(el.value);
-            };
-
-            const calories = getValue('calories');
-            const proteinPercent = getValue('protein');
-            const fatPercent = getValue('fat');
-            const carbsPercent = getValue('carbs');
-
-            // Валидация введенных данных
-            if ([calories, proteinPercent, fatPercent, carbsPercent].some(isNaN)) {
-                alert("Пожалуйста, заполните все поля числами!");
+            // Получаем значения
+            const calories = parseFloat(document.getElementById('calories').value);
+            const proteinPercent = parseFloat(document.getElementById('protein').value);
+            const fatPercent = parseFloat(document.getElementById('fat').value);
+            const carbsPercent = parseFloat(document.getElementById('carbs').value);
+            
+            // Валидация
+            if (isNaN(calories) || isNaN(proteinPercent) || isNaN(fatPercent) || isNaN(carbsPercent)) {
+                showModal('Ошибка', 'Пожалуйста, заполните все поля корректно');
                 return;
             }
-
+            
             const totalPercent = proteinPercent + fatPercent + carbsPercent;
-            if (Math.abs(totalPercent - 100) > 0.1) { // Допуск 0.1% для округления
-                alert("Сумма БЖУ должна быть ровно 100%!");
+            if (Math.abs(totalPercent - 100) > 0.1) {
+                showModal('Ошибка', 'Сумма БЖУ должна быть ровно 100%');
                 return;
             }
             
@@ -175,14 +290,11 @@
             const fatGrams = (calories * fatPercent / 100) / 9;
             const carbsGrams = (calories * carbsPercent / 100) / 4;
             
-            // Форматирование результата
-            const result = `
-                <p>Белки: ${proteinGrams.toFixed(1)} г</p>
-                <p>Жиры: ${fatGrams.toFixed(1)} г</p>
-                <p>Углеводы: ${carbsGrams.toFixed(1)} г</p>
-            `;
-            
-            document.getElementById('result').innerHTML = result;
+            // Вывод результатов
+            document.getElementById('protein-result').textContent = `${proteinGrams.toFixed(1)} г`;
+            document.getElementById('fat-result').textContent = `${fatGrams.toFixed(1)} г`;
+            document.getElementById('carbs-result').textContent = `${carbsGrams.toFixed(1)} г`;
+            document.getElementById('result').style.display = 'block';
         });
     </script>
 </body>
