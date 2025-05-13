@@ -5,24 +5,47 @@
     <title>Калькулятор БЖУ</title>
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
-        /* Добавляем поддержку темной темы VK */
+        /* Добавляем кастомные свойства на случай, если переменные VK не подхватятся */
+        :root {
+            --background_page: #ffffff;
+            --text_primary: #000000;
+            --text_secondary: #818c99;
+            --field_background: #f2f3f5;
+            --field_border: #e1e3e6;
+            --button_primary_background: #0077ff;
+            --button_primary_foreground: #ffffff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background_page: #19191a;
+                --text_primary: #e1e3e6;
+                --text_secondary: #76787a;
+                --field_background: #2c2d2e;
+                --field_border: #454647;
+                --button_primary_background: #4986cc;
+            }
+        }
+
         body {
             font-family: -apple-system, system-ui, Arial, sans-serif;
             padding: 20px;
             background-color: var(--background_page);
             color: var(--text_primary);
+            margin: 0;
+            min-height: 100vh;
             transition: background-color 0.3s, color 0.3s;
         }
-        
+
         .result { 
             margin-top: 20px; 
             font-weight: bold;
-            color: var(--text_primary);
         }
         
         #user-greeting { 
             color: var(--text_secondary);
             margin-bottom: 20px;
+            font-size: 1.1em;
         }
 
         input, button {
@@ -31,18 +54,35 @@
             border: 1px solid var(--field_border);
             padding: 8px 12px;
             border-radius: 8px;
+            width: 200px;
+            box-sizing: border-box;
         }
 
         button {
             background-color: var(--button_primary_background);
             color: var(--button_primary_foreground);
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+            width: auto;
         }
 
         button:hover {
             opacity: 0.9;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text_secondary);
         }
     </style>
 </head>
@@ -50,17 +90,25 @@
     <h1>Калькулятор БЖУ</h1>
     <div id="user-greeting">Привет, Гость!</div>
     <form id="bju-form">
-        <label>Калории (ккал):</label>
-        <input type="number" id="calories" required><br><br>
+        <div>
+            <label>Калории (ккал):</label>
+            <input type="number" id="calories" required>
+        </div>
         
-        <label>Белки (%):</label>
-        <input type="number" id="protein" required><br><br>
+        <div>
+            <label>Белки (%):</label>
+            <input type="number" id="protein" required>
+        </div>
         
-        <label>Жиры (%):</label>
-        <input type="number" id="fat" required><br><br>
+        <div>
+            <label>Жиры (%):</label>
+            <input type="number" id="fat" required>
+        </div>
         
-        <label>Углеводы (%):</label>
-        <input type="number" id="carbs" required><br><br>
+        <div>
+            <label>Углеводы (%):</label>
+            <input type="number" id="carbs" required>
+        </div>
         
         <button type="submit">Рассчитать</button>
     </form>
@@ -68,8 +116,17 @@
     <div id="result" class="result"></div>
 
     <script>
-        // Инициализация VK API
-        vkBridge.send('VKWebAppInit');
+        // Обработка ошибок инициализации
+        async function initializeApp() {
+            try {
+                await vkBridge.send('VKWebAppInit');
+                console.log('VK Bridge initialized');
+                loadUserData();
+            } catch (error) {
+                console.error('VK Bridge init error:', error);
+                document.getElementById('user-greeting').textContent = "Режим предпросмотра";
+            }
+        }
 
         // Загрузка данных пользователя
         async function loadUserData() {
@@ -77,34 +134,48 @@
                 const user = await vkBridge.send('VKWebAppGetUserInfo');
                 document.getElementById('user-greeting').textContent = `Привет, ${user.first_name}!`;
             } catch (error) {
-                console.error('Ошибка:', error);
+                console.error('User info error:', error);
                 document.getElementById('user-greeting').textContent = "Привет, Гость!";
             }
         }
 
-        // Запуск при загрузке страницы
-        window.addEventListener('DOMContentLoaded', loadUserData);
+        // Запуск приложения
+        document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 
     <script>
+        // Валидация и расчет
         document.getElementById('bju-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const calories = parseFloat(document.getElementById('calories').value);
-            const proteinPercent = parseFloat(document.getElementById('protein').value);
-            const fatPercent = parseFloat(document.getElementById('fat').value);
-            const carbsPercent = parseFloat(document.getElementById('carbs').value);
-            
+            const getValue = id => {
+                const el = document.getElementById(id);
+                return el.value.trim() === '' ? NaN : parseFloat(el.value);
+            };
+
+            const calories = getValue('calories');
+            const proteinPercent = getValue('protein');
+            const fatPercent = getValue('fat');
+            const carbsPercent = getValue('carbs');
+
+            // Валидация введенных данных
+            if ([calories, proteinPercent, fatPercent, carbsPercent].some(isNaN)) {
+                alert("Пожалуйста, заполните все поля числами!");
+                return;
+            }
+
             const totalPercent = proteinPercent + fatPercent + carbsPercent;
-            if (totalPercent !== 100) {
-                alert("Сумма БЖУ должна быть 100%!"); // Исправленное сообщение
+            if (Math.abs(totalPercent - 100) > 0.1) { // Допуск 0.1% для округления
+                alert("Сумма БЖУ должна быть ровно 100%!");
                 return;
             }
             
+            // Расчет
             const proteinGrams = (calories * proteinPercent / 100) / 4;
             const fatGrams = (calories * fatPercent / 100) / 9;
             const carbsGrams = (calories * carbsPercent / 100) / 4;
             
+            // Форматирование результата
             const result = `
                 <p>Белки: ${proteinGrams.toFixed(1)} г</p>
                 <p>Жиры: ${fatGrams.toFixed(1)} г</p>
